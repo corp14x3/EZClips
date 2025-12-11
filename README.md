@@ -1,4 +1,4 @@
-# 🎮 CS2 Auto Clip Extractor
+# 🎮 Auto Clip Extractor
 
 An automated video processing tool that detects and extracts kill moments from Counter-Strike 2 gameplay recordings. The application uses computer vision techniques to identify kill feed events and automatically creates clip compilations.
 
@@ -230,3 +230,4 @@ For issues, questions, or suggestions, please open an issue on the repository.
 ---
 
 **Made with ❤️ for the CS2 community**
+

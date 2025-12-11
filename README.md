@@ -210,83 +210,14 @@ competitive_match_kill_001_45.3s-52.1s.mp4
 
 ### Planned Features
 
-#### Core Functionality
-- [ ] **Multi-game Support**: Expand to other FPS games (Valorant, Apex Legends, COD)
-- [ ] **Auto-template Generation**: Automatically detect and extract kill feed templates
-- [ ] **Smart Scene Detection**: Use ML to identify kill contexts (clutches, aces, headshots)
-- [ ] **Audio Detection**: Detect kills by analyzing game audio peaks
-- [ ] **Death Detection**: Also extract clips where player dies (for analysis)
-
-#### Advanced Processing
-- [ ] **Highlight Scoring**: Rank clips by "epicness" (multi-kills, quick succession)
-- [ ] **Auto-compilation**: Combine best clips into montages with transitions
-- [ ] **Music Sync**: Beat-match clips to background music
-- [ ] **Slow-motion Effects**: Automatically slow down key moments
-- [ ] **Text Overlays**: Add kill count, weapon info, timestamp overlays
-
-#### Detection Improvements
-- [ ] **Deep Learning Model**: Train a neural network for more accurate kill detection
-- [ ] **OCR Integration**: Read kill feed text for detailed statistics
-- [ ] **Weapon Recognition**: Identify weapons used for clip categorization
-- [ ] **Player Name Extraction**: Track individual players across clips
-- [ ] **Scoreboard Reading**: Extract match stats from scoreboards
-
-#### User Experience
-- [ ] **Video Player Integration**: Built-in video player with frame-by-frame scrubbing
-- [ ] **Timeline Editor**: Visual timeline to manually adjust clip boundaries
-- [ ] **Bulk Operations**: Delete, rename, merge multiple clips at once
-- [ ] **Cloud Upload**: Direct upload to YouTube, Twitch, TikTok
-- [ ] **Discord Bot**: Share clips directly to Discord servers
-- [ ] **Mobile Companion**: Remote monitoring and clip playback on phones
-
-#### Performance & Quality
-- [ ] **GPU Acceleration**: Use CUDA for faster processing
-- [ ] **Multi-threading**: Process multiple videos simultaneously
-- [ ] **Quality Presets**: Export profiles (web, HD, 4K, mobile)
-- [ ] **Hardware Encoding**: H.265/HEVC support for smaller file sizes
-- [ ] **Batch Compression**: Automatically optimize clip file sizes
-
-#### Analytics & Statistics
-- [ ] **Session Statistics**: Track kills per match, accuracy trends
-- [ ] **Weapon Stats**: Most used weapons, success rates
-- [ ] **Map Analytics**: Performance breakdown by map
-- [ ] **Improvement Tracking**: Monitor skill progression over time
-- [ ] **Export Reports**: Generate PDF/HTML stat summaries
-
-#### Configuration & Customization
-- [ ] **Multiple Profiles**: Save different settings for different games
-- [ ] **Preset Library**: Community-shared detection settings
-- [ ] **Custom Themes**: UI color schemes and layouts
-- [ ] **Hotkey Support**: Keyboard shortcuts for all actions
-- [ ] **Auto-update**: Built-in update checker and installer
-
-#### Integration & Export
-- [ ] **OBS Integration**: Trigger clip extraction during live streams
-- [ ] **Replay Buffer**: Process shadowplay/instant replay footage
-- [ ] **Format Conversion**: Export for social media (9:16, 1:1)
-- [ ] **Thumbnail Generation**: Auto-create attractive thumbnails
-- [ ] **Metadata Tagging**: Add keywords, descriptions for organization
-
-#### Technical Improvements
-- [ ] **Cross-platform**: MacOS and Linux support
-- [ ] **Installer Package**: One-click installation with bundled dependencies
-- [ ] **Error Recovery**: Resume processing after crashes
-- [ ] **Logging System**: Detailed debug logs for troubleshooting
-- [ ] **Unit Tests**: Comprehensive test coverage
-- [ ] **Documentation**: Video tutorials and wiki
-
-### Community Features
-- [ ] **Clip Sharing Platform**: Upload and browse community clips
-- [ ] **Rating System**: Vote on best plays
-- [ ] **Leaderboards**: Compete for best clips
-- [ ] **Tournaments**: Organize clip competitions
-- [ ] **Plugin System**: Allow community-created extensions
-
+- [ ] **AI-Powered Kill Detection**: Machine learning models for more accurate and intelligent kill detection
+- [ ] **Multi-game Support**: Expand to other FPS games (Valorant, Apex Legends, Call of Duty, Overwatch, etc.)
+- [ ] **More Detection Methods**: Improved algorithms for better accuracy
 ---
 
 ## 📝 License
 
-This project is provided as-is for personal use.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ## 🤝 Contributing
 

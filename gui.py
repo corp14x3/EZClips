@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import messagebox, Canvas , PhotoImage
+from tkinter import messagebox, Canvas, PhotoImage, Menu
 import json
 import threading
 import os
@@ -247,6 +247,10 @@ class VideoProcessorGUI:
             (self.t('settings_filter'), [
                 ('USE_EDGE_DETECTION', self.t('use_edge'), 'bool'),
                 ('USE_COLOR_FILTER', self.t('use_color'), 'bool'),
+                ('KILL_COLOR_LOWER', 'Red Color Range 1 (HSV Lower)', 'color_hsv'),
+                ('KILL_COLOR_UPPER', 'Red Color Range 1 (HSV Upper)', 'color_hsv'),
+                ('KILL_COLOR_LOWER2', 'Red Color Range 2 (HSV Lower)', 'color_hsv'),
+                ('KILL_COLOR_UPPER2', 'Red Color Range 2 (HSV Upper)', 'color_hsv'),
                 ('CANNY_THRESHOLD1', self.t('canny_threshold1'), 'int'),
                 ('CANNY_THRESHOLD2', self.t('canny_threshold2'), 'int'),
                 ('MIN_COLOR_PIXELS', self.t('min_color_pixels'), 'int'),
@@ -351,6 +355,28 @@ class VideoProcessorGUI:
                                               width=150, height=35, corner_radius=8,
                                               command=self.change_language)
                     combo.pack(side="left")
+                elif type_ == 'color_hsv':
+                    # HSV renk değerlerini göster
+                    hsv_values = self.config.get(key, [0, 0, 0])
+                    var = ctk.StringVar(value=str(hsv_values))
+                    
+                    # Renk örneği (HSV -> RGB dönüştürüp göster)
+                    try:
+                        import numpy as np
+                        hsv_color = np.uint8([[[hsv_values[0], hsv_values[1], hsv_values[2]]]])
+                        rgb_color = cv2.cvtColor(hsv_color, cv2.COLOR_HSV2RGB)[0][0]
+                        color_hex = f"#{rgb_color[0]:02x}{rgb_color[1]:02x}{rgb_color[2]:02x}"
+                        
+                        color_preview = ctk.CTkLabel(setting_row, text="  ", width=40, height=30,
+                                                   fg_color=color_hex, corner_radius=5)
+                        color_preview.pack(side="left", padx=5)
+                    except:
+                        pass
+                    
+                    entry = ctk.CTkEntry(setting_row, textvariable=var,
+                                        width=200, height=35, corner_radius=8,
+                                        font=ctk.CTkFont(size=11))
+                    entry.pack(side="left")
                 else:
                     var = ctk.StringVar(value=str(self.config.get(key, '')))
                     entry = ctk.CTkEntry(setting_row, textvariable=var,
@@ -372,7 +398,7 @@ class VideoProcessorGUI:
     
     def update_roi_preview(self):
         """Show ROI preview on example.jpg"""
-        if not hasattr(self, 'roi_preview_label'):
+        if not hasattr(self, 'roi_preview_label'):  
             return
         
         try:
@@ -484,6 +510,10 @@ class VideoProcessorGUI:
                     self.config[key] = int(var.get())
                 elif type_ == 'float':
                     self.config[key] = float(var.get())
+                elif type_ == 'color_hsv':
+                    # String'i list'e dönüştür: "[0, 120, 80]" -> [0, 120, 80]
+                    import ast
+                    self.config[key] = ast.literal_eval(var.get())
                 else:
                     self.config[key] = var.get()
             
@@ -491,6 +521,27 @@ class VideoProcessorGUI:
             messagebox.showinfo(self.t('success_title'), self.t('settings_saved'))
         except Exception as e:
             messagebox.showerror("Error / Hata", f"Settings could not be saved / Ayarlar kaydedilemedi: {e}")
+    
+    def get_video_thumbnail(self, video_path, size=(120, 68)):
+        """Extract thumbnail from video"""
+        try:
+            cap = cv2.VideoCapture(str(video_path))
+            # Get middle frame
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            cap.set(cv2.CAP_PROP_POS_FRAMES, total_frames // 2)
+            ret, frame = cap.read()
+            cap.release()
+            
+            if ret:
+                # Convert BGR to RGB
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                # Resize to thumbnail size
+                img = Image.fromarray(frame_rgb)
+                img.thumbnail(size, Image.Resampling.LANCZOS)
+                return ctk.CTkImage(light_image=img, dark_image=img, size=size)
+        except:
+            pass
+        return None
     
     def refresh_videos(self):
         """Refresh video list"""
@@ -507,9 +558,13 @@ class VideoProcessorGUI:
         
         # İşlenmiş videoları oku
         processed = set()
-        if os.path.exists('./req/jsons/processed_videos.json'):
-            with open('./req/jsons/processed_videos.json', 'r') as f:
-                processed = set(json.load(f).keys())
+        processed_log_path = './req/jsons/processed_videos.json'
+        if os.path.exists(processed_log_path):
+            try:
+                with open(processed_log_path, 'r', encoding='utf-8') as f:
+                    processed = set(json.load(f).keys())
+            except:
+                pass
         
         videos = list(input_folder.glob('*.mp4'))
         if not videos:
@@ -527,29 +582,50 @@ class VideoProcessorGUI:
                                fg_color=("gray85", "gray25") if is_processed else ("gray90", "gray20"))
             card.pack(fill="x", padx=10, pady=8)
             
+            # Sağ tık menüsü ekle
+            video_name = video_file.name
+            card.bind("<Button-3>", lambda e, vn=video_name, ip=is_processed: self.show_video_context_menu(e, vn, ip))
+            
             # İçerik
             content = ctk.CTkFrame(card, fg_color="transparent")
             content.pack(fill="x", padx=20, pady=15)
             
-            # Sol - bilgi
+            # Sağ tık menüsünü content'e de ekle
+            content.bind("<Button-3>", lambda e, vn=video_name, ip=is_processed: self.show_video_context_menu(e, vn, ip))
+            
+            # Thumbnail (sol)
+            thumbnail = self.get_video_thumbnail(video_file)
+            if thumbnail:
+                thumb_label = ctk.CTkLabel(content, image=thumbnail, text="")
+                thumb_label.pack(side="left", padx=(0, 15))
+                thumb_label.bind("<Button-3>", lambda e, vn=video_name, ip=is_processed: self.show_video_context_menu(e, vn, ip))
+            
+            # Bilgi (orta)
             info_frame = ctk.CTkFrame(content, fg_color="transparent")
             info_frame.pack(side="left", fill="x", expand=True)
+            info_frame.bind("<Button-3>", lambda e, vn=video_name, ip=is_processed: self.show_video_context_menu(e, vn, ip))
             
-            ctk.CTkLabel(info_frame, text=video_file.name,
+            name_label = ctk.CTkLabel(info_frame, text=video_file.name,
                         font=ctk.CTkFont(size=14, weight="bold"),
-                        anchor="w").pack(anchor="w")
+                        anchor="w")
+            name_label.pack(anchor="w")
+            name_label.bind("<Button-3>", lambda e, vn=video_name, ip=is_processed: self.show_video_context_menu(e, vn, ip))
             
-            ctk.CTkLabel(info_frame, text=f"💾 {size:.1f} MB",
+            size_label = ctk.CTkLabel(info_frame, text=f"💾 {size:.1f} MB",
                         font=ctk.CTkFont(size=12),
-                        text_color="gray60").pack(anchor="w", pady=(5, 0))
+                        text_color="gray60")
+            size_label.pack(anchor="w", pady=(5, 0))
+            size_label.bind("<Button-3>", lambda e, vn=video_name, ip=is_processed: self.show_video_context_menu(e, vn, ip))
             
             # Sağ - durum
             status_text = self.t('processed') if is_processed else self.t('waiting')
             status_color = "#4CAF50" if is_processed else "#FFA726"
             
-            ctk.CTkLabel(content, text=status_text,
+            status_label = ctk.CTkLabel(content, text=status_text,
                         font=ctk.CTkFont(size=13, weight="bold"),
-                        text_color=status_color).pack(side="right")
+                        text_color=status_color)
+            status_label.pack(side="right")
+            status_label.bind("<Button-3>", lambda e, vn=video_name, ip=is_processed: self.show_video_context_menu(e, vn, ip))
     
     def refresh_clips(self):
         """Refresh clip list"""
@@ -584,7 +660,13 @@ class VideoProcessorGUI:
             content = ctk.CTkFrame(card, fg_color="transparent")
             content.pack(fill="x", padx=20, pady=15)
             
-            # Sol - bilgi
+            # Thumbnail (sol)
+            thumbnail = self.get_video_thumbnail(clip_file)
+            if thumbnail:
+                thumb_label = ctk.CTkLabel(content, image=thumbnail, text="")
+                thumb_label.pack(side="left", padx=(0, 15))
+            
+            # Bilgi (orta)
             info_frame = ctk.CTkFrame(content, fg_color="transparent")
             info_frame.pack(side="left", fill="x", expand=True)
             
@@ -597,17 +679,97 @@ class VideoProcessorGUI:
                         font=ctk.CTkFont(size=12),
                         text_color="gray60").pack(anchor="w", pady=(5, 0))
             
-            # Sağ - oynat butonu
-            play_btn = ctk.CTkButton(content, text=self.t('play'),
+            # Sağ - butonlar
+            button_frame = ctk.CTkFrame(content, fg_color="transparent")
+            button_frame.pack(side="right")
+            
+            play_btn = ctk.CTkButton(button_frame, text=self.t('play'),
                                     command=lambda f=clip_file: self.play_clip(f),
                                     width=100, height=35, corner_radius=8,
                                     fg_color="#2196F3", hover_color="#1976D2")
-            play_btn.pack(side="right")
+            play_btn.pack(side="left", padx=5)
+            
+            delete_btn = ctk.CTkButton(button_frame, text="🗑️",
+                                      command=lambda f=clip_file: self.delete_clip(f),
+                                      width=50, height=35, corner_radius=8,
+                                      fg_color="#f44336", hover_color="#da190b")
+            delete_btn.pack(side="left")
     
     def play_clip(self, filepath):
         """Play clip"""
         if filepath.exists():
             os.startfile(str(filepath))
+    
+    def delete_clip(self, filepath):
+        """Delete clip"""
+        if messagebox.askyesno("Delete / Sil", f"Are you sure you want to delete this clip?\nBu klipi silmek istediğinizden emin misiniz?\n\n{filepath.name}"):
+            try:
+                filepath.unlink()
+                messagebox.showinfo("Success / Başarılı", "Clip deleted successfully!\nKlip başarıyla silindi!")
+                self.refresh_clips()
+            except Exception as e:
+                messagebox.showerror("Error / Hata", f"Could not delete clip / Klip silinemedi: {e}")
+    
+    def toggle_video_processed(self, video_name, mark_as_processed):
+        """Toggle video processed status"""
+        processed_log_path = './req/jsons/processed_videos.json'
+        
+        # Load current processed videos
+        processed = {}
+        if os.path.exists(processed_log_path):
+            try:
+                with open(processed_log_path, 'r', encoding='utf-8') as f:
+                    processed = json.load(f)
+            except:
+                pass
+        
+        # Update status
+        if mark_as_processed:
+            # Mark as processed
+            processed[video_name] = {
+                'clips_count': 0,
+                'processed_date': None,
+                'manually_marked': True
+            }
+            message = f"Video marked as processed!\nVideo işlenmiş olarak işaretlendi!\n\n{video_name}"
+        else:
+            # Mark as not processed
+            if video_name in processed:
+                del processed[video_name]
+            message = f"Video marked as not processed!\nVideo işlenmemiş olarak işaretlendi!\n\n{video_name}"
+        
+        # Save
+        try:
+            os.makedirs(os.path.dirname(processed_log_path), exist_ok=True)
+            with open(processed_log_path, 'w', encoding='utf-8') as f:
+                json.dump(processed, f, indent=2, ensure_ascii=False)
+            messagebox.showinfo("Success / Başarılı", message)
+            self.refresh_videos()
+        except Exception as e:
+            messagebox.showerror("Error / Hata", f"Could not update status / Durum güncellenemedi: {e}")
+    
+    def show_video_context_menu(self, event, video_name, is_processed):
+        """Show right-click context menu for video"""
+        menu = Menu(self.root, tearoff=0,
+                   bg="#2B2B2B",  # Dark background
+                   fg="white",  # White text
+                   activebackground="#1F538D",  # Blue hover
+                   activeforeground="white",
+                   font=("Segoe UI", 10),
+                   borderwidth=1,
+                   relief="solid")
+        
+        if is_processed:
+            menu.add_command(label="❌ İşlenmemiş Olarak İşaretle / Mark as Not Processed",
+                           command=lambda: self.toggle_video_processed(video_name, False))
+        else:
+            menu.add_command(label="✅ İşlenmiş Olarak İşaretle / Mark as Processed",
+                           command=lambda: self.toggle_video_processed(video_name, True))
+        
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
     
     def open_input_folder(self):
         """Open input folder"""

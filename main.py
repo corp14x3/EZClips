@@ -7,6 +7,23 @@ from pathlib import Path
 
 # Global GUI reference
 gui_instance = None
+current_language = 'tr'
+language_texts = {}
+
+def load_languages():
+    """Load language file"""
+    try:
+        with open('./req/jsons/languages.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return {"tr": {}, "en": {}}
+
+def t(key, **kwargs):
+    """Get translated text"""
+    text = language_texts.get(key, key)
+    if kwargs:
+        text = text.format(**kwargs)
+    return text
 
 def load_config():
     """Load settings from config file"""
@@ -18,7 +35,7 @@ def load_config():
         return {
             'INPUT_FOLDER': 'input_videos',
             'OUTPUT_FOLDER': 'kills',
-            'TEMPLATE_PATH': 'killfeed_template.jpg',
+            'TEMPLATE_PATH': './req/templates/killfeed_template.jpg',
             'THRESHOLD': 0.55,
             'BUFFER_BEFORE': 3.0,
             'BUFFER_AFTER': 2.0,
@@ -89,7 +106,7 @@ def show_preview(frame):
 def create_output_folder():
     """Create output folder"""
     Path(OUTPUT_FOLDER).mkdir(exist_ok=True)
-    log_message(f"✓ Çıktı klasörü hazır: {OUTPUT_FOLDER}", "success")
+    log_message(f"{t('log_output_ready')}: {OUTPUT_FOLDER}", "success")
 
 def load_processed_videos():
     """Load list of processed videos"""
@@ -111,7 +128,7 @@ def save_processed_video(video_name, clips_count):
 def get_video_files(folder):
     """Find all video files in folder"""
     if not os.path.exists(folder):
-        log_message(f"✓ Input klasörü oluşturuluyor: {folder}", "success")
+        log_message(f"{t('log_input_creating')}: {folder}", "success")
         Path(folder).mkdir(exist_ok=True)
         return []
     
@@ -130,7 +147,7 @@ def get_video_files(folder):
                 video_files.append(video_path)
     
     if skipped_videos:
-        log_message(f"\n⏭️  {len(skipped_videos)} video zaten işlenmiş (atlanıyor):", "warning")
+        log_message(f"\n{t('log_skipped_videos', count=len(skipped_videos))}", "warning")
         for video in skipped_videos:
             log_message(f"   - {video}", "warning")
     
@@ -139,14 +156,14 @@ def get_video_files(folder):
 def detect_kills_in_video(video_path, template_path):
     """Detect killfeeds in video"""
     log_message(f"\n{'='*60}", "info")
-    log_message(f"📹 Video analiz ediliyor: {os.path.basename(video_path)}", "info")
+    log_message(f"{t('log_analyzing_video')}: {os.path.basename(video_path)}", "info")
     log_message(f"{'='*60}", "info")
     
     cap = cv2.VideoCapture(video_path)
     template = cv2.imread(template_path)
     
     if template is None:
-        log_message(f"❌ HATA: Template bulunamadı: {template_path}", "error")
+        log_message(f"{t('log_template_error')}: {template_path}", "error")
         return [], 0
     
     template_h, template_w = template.shape[:2]
@@ -155,15 +172,15 @@ def detect_kills_in_video(video_path, template_path):
     if USE_EDGE_DETECTION:
         template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
         template_edges = cv2.Canny(template_gray, CANNY_THRESHOLD1, CANNY_THRESHOLD2)
-        log_message(f"🔍 Tespit modu: Edge Detection (Canny {CANNY_THRESHOLD1}-{CANNY_THRESHOLD2})", "info")
+        log_message(t('log_detection_edge', t1=CANNY_THRESHOLD1, t2=CANNY_THRESHOLD2), "info")
     else:
-        log_message(f"🔍 Tespit modu: Normal Template Matching", "info")
+        log_message(t('log_detection_normal'), "info")
     
     if USE_COLOR_FILTER:
-        log_message(f"🎨 Renk filtresi: AÇIK (sadece kırmızı çerçeveli killer)", "info")
+        log_message(t('log_color_filter'), "info")
     
     if USE_ROI:
-        log_message(f"📍 ROI: AÇIK (sadece sağ üst köşe taranacak)", "info")
+        log_message(t('log_roi_enabled'), "info")
     
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -178,16 +195,16 @@ def detect_kills_in_video(video_path, template_path):
         roi_x2 = int(frame_width * ROI_X_END)
         roi_y2 = int(frame_height * ROI_Y_END)
     
-    log_message(f"📊 Video bilgileri:", "info")
-    log_message(f"   - FPS: {fps:.2f}", "info")
-    log_message(f"   - Süre: {duration:.2f} saniye", "info")
-    log_message(f"   - Frame sayısı: {total_frames}", "info")
-    log_message(f"   - Çözünürlük: {frame_width}x{frame_height}", "info")
+    log_message(t('log_video_info'), "info")
+    log_message(f"{t('log_fps')}: {fps:.2f}", "info")
+    log_message(f"{t('log_duration')}: {duration:.2f} {t('log_seconds')}", "info")
+    log_message(f"{t('log_frames')}: {total_frames}", "info")
+    log_message(f"{t('log_resolution')}: {frame_width}x{frame_height}", "info")
     if USE_ROI:
-        log_message(f"   - ROI bölgesi: [{roi_x1},{roi_y1}] -> [{roi_x2},{roi_y2}]", "info")
-    log_message(f"   - Tarama hızı: {FRAME_SKIP}x (her {FRAME_SKIP} frame'de bir kontrol)", "info")
-    log_message(f"   - Threshold: {THRESHOLD}", "info")
-    log_message(f"\n🔍 Kill taraması başlıyor...", "info")
+        log_message(f"{t('log_roi_region')}: [{roi_x1},{roi_y1}] -> [{roi_x2},{roi_y2}]", "info")
+    log_message(t('log_scan_speed', skip=FRAME_SKIP), "info")
+    log_message(f"{t('log_threshold')}: {THRESHOLD}", "info")
+    log_message(f"\n{t('log_scan_starting')}", "info")
     
     kill_times = []
     frame_count = 0
@@ -259,7 +276,7 @@ def detect_kills_in_video(video_path, template_path):
                     
                     if current_time - last_kill_print_time > KILL_COOLDOWN:
                         color_info = f" (🔴 {color_pixel_count} red pixels)" if USE_COLOR_FILTER else ""
-                        log_message(f"✓ Kill found: {current_time:.2f}s{color_info}", "success")
+                        log_message(f"{t('log_kill_found')}: {current_time:.2f}s{color_info}", "success")
                         last_kill_print_time = current_time
                         
                         # Show preview - draw ROI rectangle
@@ -272,7 +289,7 @@ def detect_kills_in_video(video_path, template_path):
                 break  # Got first match, continue
     
     cap.release()
-    log_message(f"\n🎯 Toplam {len(kill_times)} kill tespit edildi!", "success")
+    log_message(f"\n{t('log_total_kills', count=len(kill_times))}", "success")
     return kill_times, fps
 
 def merge_close_kills(kill_times, min_gap):
@@ -301,7 +318,7 @@ def merge_close_kills(kill_times, min_gap):
 
 def extract_clips(video_path, kill_segments, fps, video_name):
     """Extract kill clips with FFmpeg"""
-    log_message(f"\n✂️  {len(kill_segments)} clip çıkarılıyor...", "info")
+    log_message(f"\n{t('log_extracting_clips', count=len(kill_segments))}", "info")
     
     for i, (start_time, end_time) in enumerate(kill_segments, 1):
         # Add buffer
@@ -326,16 +343,16 @@ def extract_clips(video_path, kill_segments, fps, video_name):
             output_file
         ]
         
-        log_message(f"📹 Clip {i}/{len(kill_segments)} çıkarılıyor: {clip_start:.1f}s - {clip_end:.1f}s", "info")
-        update_progress(i, len(kill_segments), f"Clip çıkarma: {i}/{len(kill_segments)}")
+        log_message(f"{t('log_extracting_clip', i=i, total=len(kill_segments))}: {clip_start:.1f}s - {clip_end:.1f}s", "info")
+        update_progress(i, len(kill_segments), f"Clip {i}/{len(kill_segments)}")
         result = subprocess.run(cmd, capture_output=True)
         
         if result.returncode == 0:
-            log_message(f"✓ Kaydedildi: {os.path.basename(output_file)}", "success")
+            log_message(f"{t('log_saved')}: {os.path.basename(output_file)}", "success")
         else:
-            log_message(f"❌ Hata: {os.path.basename(output_file)}", "error")
+            log_message(f"{t('log_error')}: {os.path.basename(output_file)}", "error")
     
-    log_message(f"\n✓ {len(kill_segments)} clip başarıyla kaydedildi!", "success")
+    log_message(f"\n{t('log_clips_saved', count=len(kill_segments))}", "success")
 
 def process_video(video_path, template_path):
     """Process single video"""
@@ -345,14 +362,14 @@ def process_video(video_path, template_path):
     kill_times, fps = detect_kills_in_video(video_path, template_path)
     
     if not kill_times:
-        log_message("⚠️  No kills found!", "warning")
+        log_message(t('log_no_kills'), "warning")
         # Save anyway to avoid reprocessing
         save_processed_video(video_name, 0)
         return 0
     
     # Merge consecutive kills
     kill_segments = merge_close_kills(kill_times, MIN_KILL_GAP)
-    log_message(f"🔗 {len(kill_times)} kills merged into {len(kill_segments)} segments", "info")
+    log_message(t('log_merged', kills=len(kill_times), segments=len(kill_segments)), "info")
     
     # Extract clips
     extract_clips(video_path, kill_segments, fps, video_name)
@@ -370,8 +387,14 @@ def run_with_gui(gui):
     global ROI_X_START, ROI_Y_START, ROI_X_END, ROI_Y_END
     global KILL_COLOR_LOWER, KILL_COLOR_UPPER, KILL_COLOR_LOWER2, KILL_COLOR_UPPER2
     global MIN_COLOR_PIXELS, CANNY_THRESHOLD1, CANNY_THRESHOLD2
+    global current_language, language_texts
     
     gui_instance = gui
+    
+    # Load language
+    languages = load_languages()
+    current_language = gui.config.get('LANGUAGE', 'tr')
+    language_texts = languages.get(current_language, languages['tr'])
     
     # Reload config (settings may have changed)
     config = load_config()
@@ -403,20 +426,20 @@ def run_with_gui(gui):
     
     # Start processing
     log_message("\n" + "="*60, "info")
-    log_message("🎮 FPS AUTO EDITOR - KILL CLIP EXTRACTOR", "info")
+    log_message(t('log_app_title'), "info")
     log_message("="*60, "info")
     
     create_output_folder()
     video_files = get_video_files(INPUT_FOLDER)
     
     if not video_files:
-        log_message(f"\n⚠️  '{INPUT_FOLDER}' klasöründe video bulunamadı!", "warning")
-        log_message(f"📁 Desteklenen formatlar: {', '.join(VIDEO_EXTENSIONS)}", "info")
-        log_message(f"💡 Video dosyalarını '{INPUT_FOLDER}' klasörüne atın ve tekrar çalıştırın.", "info")
+        log_message(f"\n{t('log_no_videos', folder=INPUT_FOLDER)}", "warning")
+        log_message(f"{t('log_supported_formats')}: {', '.join(VIDEO_EXTENSIONS)}", "info")
+        log_message(t('log_add_videos', folder=INPUT_FOLDER), "info")
         gui_instance.root.after(0, gui_instance.refresh_videos)
         return
     
-    log_message(f"\n📁 {len(video_files)} video bulundu:", "info")
+    log_message(f"\n{t('log_videos_found', count=len(video_files))}", "info")
     for i, video in enumerate(video_files, 1):
         log_message(f"   {i}. {os.path.basename(video)}", "info")
     
@@ -424,7 +447,7 @@ def run_with_gui(gui):
     total_clips = 0
     for i, video_path in enumerate(video_files, 1):
         log_message(f"\n{'='*60}", "info")
-        log_message(f"🎬 Video {i}/{len(video_files)} işleniyor...", "info")
+        log_message(t('log_processing_video', i=i, total=len(video_files)), "info")
         log_message(f"{'='*60}", "info")
         update_progress(i-1, len(video_files), f"Video {i}/{len(video_files)}")
         
@@ -433,12 +456,12 @@ def run_with_gui(gui):
     
     # Summary
     log_message(f"\n{'='*60}", "info")
-    log_message(f"✅ İŞLEM TAMAMLANDI!", "success")
+    log_message(t('log_completed'), "success")
     log_message(f"{'='*60}", "info")
-    log_message(f"📊 Özet:", "info")
-    log_message(f"   - İşlenen video: {len(video_files)}", "info")
-    log_message(f"   - Toplam clip: {total_clips}", "info")
-    log_message(f"   - Çıktı klasörü: {OUTPUT_FOLDER}", "info")
+    log_message(t('log_summary'), "info")
+    log_message(f"{t('log_processed_videos')}: {len(video_files)}", "info")
+    log_message(f"{t('log_total_clips')}: {total_clips}", "info")
+    log_message(f"{t('log_output_folder')}: {OUTPUT_FOLDER}", "info")
     log_message(f"{'='*60}\n", "info")
     update_progress(len(video_files), len(video_files), "Completed!")
     

@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import messagebox, Canvas
+from tkinter import messagebox, Canvas , PhotoImage
 import json
 import threading
 import os
@@ -13,10 +13,10 @@ import queue
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-# Dil dosyasını yükle
+# Load language file
 def load_languages():
     try:
-        with open('languages.json', 'r', encoding='utf-8') as f:
+        with open('./req/jsons/languages.json', 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
         return {"tr": {}, "en": {}}
@@ -29,14 +29,14 @@ class VideoProcessorGUI:
         self.root.geometry("1400x900")
         
         # Config dosyasını yükle
-        self.config_file = "config.json"
+        self.config_file = "./req/jsons/config.json"
         self.load_config()
         
         # Dil ayarla
         self.current_lang = self.config.get('LANGUAGE', 'tr')
         self.texts = LANGUAGES.get(self.current_lang, LANGUAGES['tr'])
         
-        self.root.title(self.texts.get('app_title', '🎮 Auto FPS Editor'))
+        self.root.title(self.texts.get('app_title'))
         
         # Queue'lar (main.py'den mesajları almak için)
         self.log_queue = queue.Queue()
@@ -54,7 +54,7 @@ class VideoProcessorGUI:
         self.check_queues()
         
     def load_config(self):
-        """Config dosyasından ayarları yükle"""
+        """Load settings from config file"""
         try:
             with open(self.config_file, 'r') as f:
                 self.config = json.load(f)
@@ -63,7 +63,7 @@ class VideoProcessorGUI:
             self.root.quit()
     
     def save_config(self):
-        """Config dosyasına ayarları kaydet"""
+        """Save settings to config file"""
         try:
             with open(self.config_file, 'w') as f:
                 json.dump(self.config, f, indent=4)
@@ -76,7 +76,7 @@ class VideoProcessorGUI:
         return self.texts.get(key, key)
     
     def create_ui(self):
-        """Ana UI oluştur"""
+        """Create main UI"""
         # Ana tabview
         self.tabview = ctk.CTkTabview(self.root, corner_radius=15)
         self.tabview.pack(fill="both", expand=True, padx=20, pady=20)
@@ -94,7 +94,7 @@ class VideoProcessorGUI:
         self.create_settings_tab()
     
     def create_process_tab(self):
-        """İşlem sekmesi"""
+        """Process tab"""
         tab = self.tabview.tab(self.t('tab_process'))
         
         # Sol panel - Log
@@ -141,7 +141,7 @@ class VideoProcessorGUI:
         
         # Log alanı
         self.log_text = ctk.CTkTextbox(left_frame, font=ctk.CTkFont(family="Consolas", size=11),
-                                       corner_radius=10, wrap="word")
+                                       corner_radius=10, wrap="word", state="disabled")
         self.log_text.pack(fill="both", expand=True, padx=20, pady=(10, 20))
         
         # Sağ panel - Preview
@@ -162,7 +162,7 @@ class VideoProcessorGUI:
         self.preview_label.configure(text=self.t('preview_waiting'))
     
     def create_videos_tab(self):
-        """Videolar sekmesi"""
+        """Videos tab"""
         tab = self.tabview.tab(self.t('tab_videos'))
         
         # Üst panel
@@ -188,7 +188,7 @@ class VideoProcessorGUI:
         self.refresh_videos()
     
     def create_clips_tab(self):
-        """Klipler sekmesi"""
+        """Clips tab"""
         tab = self.tabview.tab(self.t('tab_clips'))
         
         # Üst panel
@@ -214,7 +214,7 @@ class VideoProcessorGUI:
         self.refresh_clips()
     
     def create_settings_tab(self):
-        """Ayarlar sekmesi"""
+        """Settings tab"""
         tab = self.tabview.tab(self.t('tab_settings'))
         
         # Scrollable frame
@@ -371,13 +371,13 @@ class VideoProcessorGUI:
                      fg_color="#4CAF50", hover_color="#45a049").pack()
     
     def update_roi_preview(self):
-        """ROI önizlemesini example.jpg üzerinde göster"""
+        """Show ROI preview on example.jpg"""
         if not hasattr(self, 'roi_preview_label'):
             return
         
         try:
             # example.jpg'yi yükle
-            img_path = Path("example.jpg")
+            img_path = Path("./req/roi/example.jpg")
             if not img_path.exists():
                 return
             
@@ -468,14 +468,14 @@ class VideoProcessorGUI:
             print(f"ROI preview error: {e}")
     
     def change_language(self, lang):
-        """Dili değiştir"""
+        """Change language"""
         self.current_lang = lang
         self.texts = LANGUAGES.get(lang, LANGUAGES['tr'])
         messagebox.showinfo(self.t('success_title'), 
                            "Please restart the application to apply language changes.\n\nUygulamayı yeniden başlatın.")
     
     def save_settings(self):
-        """Ayarları kaydet"""
+        """Save settings"""
         try:
             for key, (var, type_) in self.setting_vars.items():
                 if type_ == 'bool':
@@ -493,7 +493,7 @@ class VideoProcessorGUI:
             messagebox.showerror("Error / Hata", f"Settings could not be saved / Ayarlar kaydedilemedi: {e}")
     
     def refresh_videos(self):
-        """Video listesini yenile"""
+        """Refresh video list"""
         # Eski kartları temizle
         for widget in self.videos_scroll.winfo_children():
             widget.destroy()
@@ -507,8 +507,8 @@ class VideoProcessorGUI:
         
         # İşlenmiş videoları oku
         processed = set()
-        if os.path.exists('processed_videos.json'):
-            with open('processed_videos.json', 'r') as f:
+        if os.path.exists('./req/jsons/processed_videos.json'):
+            with open('./req/jsons/processed_videos.json', 'r') as f:
                 processed = set(json.load(f).keys())
         
         videos = list(input_folder.glob('*.mp4'))
@@ -552,7 +552,7 @@ class VideoProcessorGUI:
                         text_color=status_color).pack(side="right")
     
     def refresh_clips(self):
-        """Klip listesini yenile"""
+        """Refresh clip list"""
         # Eski kartları temizle
         for widget in self.clips_scroll.winfo_children():
             widget.destroy()
@@ -605,26 +605,26 @@ class VideoProcessorGUI:
             play_btn.pack(side="right")
     
     def play_clip(self, filepath):
-        """Klip oynat"""
+        """Play clip"""
         if filepath.exists():
             os.startfile(str(filepath))
     
     def open_input_folder(self):
-        """Input klasörünü aç"""
+        """Open input folder"""
         folder = self.config['INPUT_FOLDER']
         if not os.path.exists(folder):
             os.makedirs(folder)
         os.startfile(folder)
     
     def open_output_folder(self):
-        """Output klasörünü aç"""
+        """Open output folder"""
         folder = self.config['OUTPUT_FOLDER']
         if not os.path.exists(folder):
             os.makedirs(folder)
         os.startfile(folder)
     
     def start_processing(self):
-        """İşlemeyi başlat"""
+        """Start processing"""
         if self.is_processing:
             return
         
@@ -638,14 +638,14 @@ class VideoProcessorGUI:
         self.process_thread.start()
     
     def stop_processing(self):
-        """İşlemeyi durdur"""
+        """Stop processing"""
         self.is_processing = False
         self.start_btn.configure(state="normal")
         self.stop_btn.configure(state="disabled")
         self.add_log("⚠️ İşlem durduruldu", "warning")
     
     def run_processor(self):
-        """main.py'yi çalıştır"""
+        """Run main.py"""
         try:
             import main
             main.run_with_gui(self)
@@ -657,25 +657,27 @@ class VideoProcessorGUI:
             self.root.after(0, lambda: self.stop_btn.configure(state="disabled"))
     
     def add_log(self, message, level='info'):
-        """Log mesajı ekle (thread-safe)"""
+        """Add log message (thread-safe)"""
         self.log_queue.put((message, level))
     
     def update_progress(self, current, total, text=""):
-        """İlerleme güncelle (thread-safe)"""
+        """Update progress (thread-safe)"""
         self.progress_queue.put((current, total, text))
     
     def update_preview(self, frame):
-        """Preview güncelle (thread-safe)"""
+        """Update preview (thread-safe)"""
         self.preview_queue.put(frame)
     
     def check_queues(self):
-        """Queue'ları kontrol et ve GUI'yi güncelle"""
+        """Check queues and update GUI"""
         # Log queue
         try:
             while True:
                 message, level = self.log_queue.get_nowait()
+                self.log_text.configure(state="normal")  # Geçici olarak düzenlenebilir yap
                 self.log_text.insert("end", message + '\n')
                 self.log_text.see("end")
+                self.log_text.configure(state="disabled")  # Tekrar readonly yap
         except queue.Empty:
             pass
         

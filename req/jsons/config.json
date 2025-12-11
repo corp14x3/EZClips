@@ -1,0 +1,42 @@
+{
+    "LANGUAGE": "en",
+    "THRESHOLD": 0.55,
+    "FRAME_SKIP": 120,
+    "BUFFER_BEFORE": 4.0,
+    "BUFFER_AFTER": 4.0,
+    "MIN_KILL_GAP": 7.0,
+    "KILL_COOLDOWN": 2.0,
+    "USE_EDGE_DETECTION": true,
+    "USE_COLOR_FILTER": true,
+    "USE_ROI": true,
+    "ROI_X_START": 0.7679558011049724,
+    "ROI_Y_START": 0.06767955801104972,
+    "ROI_X_END": 1.0,
+    "ROI_Y_END": 0.2541436464088398,
+    "KILL_COLOR_LOWER": [
+        0,
+        120,
+        80
+    ],
+    "KILL_COLOR_UPPER": [
+        10,
+        255,
+        255
+    ],
+    "KILL_COLOR_LOWER2": [
+        170,
+        120,
+        80
+    ],
+    "KILL_COLOR_UPPER2": [
+        180,
+        255,
+        255
+    ],
+    "MIN_COLOR_PIXELS": 150,
+    "CANNY_THRESHOLD1": 150,
+    "CANNY_THRESHOLD2": 250,
+    "INPUT_FOLDER": "input_videos",
+    "OUTPUT_FOLDER": "kills",
+    "TEMPLATE_PATH": "./../templates/killfeed_template.jpg"
+}

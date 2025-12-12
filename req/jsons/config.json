@@ -1,7 +1,7 @@
 {
     "LANGUAGE": "en",
     "THRESHOLD": 0.5,
-    "FRAME_SKIP": 60,
+    "FRAME_SKIP": 30,
     "BUFFER_BEFORE": 4.0,
     "BUFFER_AFTER": 4.0,
     "MIN_KILL_GAP": 10.0,

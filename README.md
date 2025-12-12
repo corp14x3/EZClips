@@ -4,7 +4,7 @@ An automated video processing tool that detects and extracts kill moments from C
 
 ![Version](https://img.shields.io/badge/version-1.0-blue)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 
 ## 📋 Table of Contents
 - [Features](#features)
@@ -230,4 +230,5 @@ For issues, questions, or suggestions, please open an issue on the repository.
 ---
 
 **Made with ❤️ for the CS2 community**
+
 

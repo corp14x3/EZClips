@@ -84,7 +84,12 @@
         "log_processed_videos": "   - İşlenen video",
         "log_total_clips": "   - Toplam clip",
         "log_output_folder": "   - Çıktı klasörü",
-        "log_seconds": "saniye"
+        "log_seconds": "saniye",
+        "log_gpu_enabled": "🚀 GPU hızlandırma: AKTIF (OpenCV CUDA)",
+        "log_gpu_disabled": "💻 GPU hızlandırma: KAPALI (CPU kullanılıyor)",
+        "log_encoding_gpu": "🎬 Video encoding: GPU (NVENC h264_nvenc)",
+        "log_encoding_cpu": "🎬 Video encoding: CPU (libx264)",
+        "log_gpu_failed": "⚠️ GPU encoding başarısız, CPU'ya geçiliyor..."
     },
     "en": {
         "app_title": "EZClips",
@@ -171,6 +176,11 @@
         "log_processed_videos": "   - Processed videos",
         "log_total_clips": "   - Total clips",
         "log_output_folder": "   - Output folder",
-        "log_seconds": "seconds"
+        "log_seconds": "seconds",
+        "log_gpu_enabled": "🚀 GPU acceleration: ENABLED (OpenCV CUDA)",
+        "log_gpu_disabled": "💻 GPU acceleration: DISABLED (using CPU)",
+        "log_encoding_gpu": "🎬 Video encoding: GPU (NVENC h264_nvenc)",
+        "log_encoding_cpu": "🎬 Video encoding: CPU (libx264)",
+        "log_gpu_failed": "⚠️ GPU encoding failed, switching to CPU..."
     }
 }

@@ -9,6 +9,20 @@ from pathlib import Path
 gui_instance = None
 current_language = 'tr'
 language_texts = {}
+use_gpu = False  # Will be set after checking GPU availability
+
+# Check if GPU is available for OpenCV
+def check_gpu_available():
+    """Check if CUDA GPU is available for OpenCV"""
+    try:
+        # Check if cv2.cuda module exists
+        if hasattr(cv2, 'cuda'):
+            gpu_count = cv2.cuda.getCudaEnabledDeviceCount()
+            if gpu_count > 0:
+                return True
+    except:
+        pass
+    return False
 
 def load_languages():
     """Load language file"""
@@ -28,7 +42,7 @@ def t(key, **kwargs):
 def load_config():
     """Load settings from config file"""
     try:
-        with open('config.json', 'r') as f:
+        with open('./req/jsons/config.json', 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
         # Default values
@@ -168,10 +182,31 @@ def detect_kills_in_video(video_path, template_path):
     
     template_h, template_w = template.shape[:2]
     
+    # Check GPU availability
+    global use_gpu
+    if use_gpu:
+        log_message(t('log_gpu_enabled'), "success")
+    else:
+        log_message(t('log_gpu_disabled'), "info")
+    
     # Prepare for edge detection
     if USE_EDGE_DETECTION:
         template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-        template_edges = cv2.Canny(template_gray, CANNY_THRESHOLD1, CANNY_THRESHOLD2)
+        
+        if use_gpu:
+            # GPU: Upload template to GPU and apply Canny
+            try:
+                gpu_template_gray = cv2.cuda_GpuMat()
+                gpu_template_gray.upload(template_gray)
+                canny_detector = cv2.cuda.createCannyEdgeDetector(CANNY_THRESHOLD1, CANNY_THRESHOLD2)
+                gpu_template_edges = canny_detector.detect(gpu_template_gray)
+                template_edges = gpu_template_edges.download()
+            except:
+                # Fallback to CPU
+                template_edges = cv2.Canny(template_gray, CANNY_THRESHOLD1, CANNY_THRESHOLD2)
+        else:
+            template_edges = cv2.Canny(template_gray, CANNY_THRESHOLD1, CANNY_THRESHOLD2)
+        
         log_message(t('log_detection_edge', t1=CANNY_THRESHOLD1, t2=CANNY_THRESHOLD2), "info")
     else:
         log_message(t('log_detection_normal'), "info")
@@ -235,8 +270,22 @@ def detect_kills_in_video(video_path, template_path):
         # Template matching
         if USE_EDGE_DETECTION:
             frame_gray = cv2.cvtColor(search_frame, cv2.COLOR_BGR2GRAY)
-            frame_edges = cv2.Canny(frame_gray, CANNY_THRESHOLD1, CANNY_THRESHOLD2)
-            res = cv2.matchTemplate(frame_edges, template_edges, cv2.TM_CCOEFF_NORMED)
+            
+            if use_gpu:
+                try:
+                    # GPU: Canny + Template Matching
+                    gpu_frame_gray = cv2.cuda_GpuMat()
+                    gpu_frame_gray.upload(frame_gray)
+                    gpu_frame_edges = canny_detector.detect(gpu_frame_gray)
+                    frame_edges = gpu_frame_edges.download()
+                    res = cv2.matchTemplate(frame_edges, template_edges, cv2.TM_CCOEFF_NORMED)
+                except:
+                    # CPU fallback
+                    frame_edges = cv2.Canny(frame_gray, CANNY_THRESHOLD1, CANNY_THRESHOLD2)
+                    res = cv2.matchTemplate(frame_edges, template_edges, cv2.TM_CCOEFF_NORMED)
+            else:
+                frame_edges = cv2.Canny(frame_gray, CANNY_THRESHOLD1, CANNY_THRESHOLD2)
+                res = cv2.matchTemplate(frame_edges, template_edges, cv2.TM_CCOEFF_NORMED)
         else:
             res = cv2.matchTemplate(search_frame, template, cv2.TM_CCOEFF_NORMED)
         
@@ -329,28 +378,38 @@ def extract_clips(video_path, kill_segments, fps, video_name):
         base_name = os.path.splitext(video_name)[0]
         output_file = os.path.join(OUTPUT_FOLDER, f"{base_name}_kill_{i:03d}_{clip_start:.1f}s-{clip_end:.1f}s.mp4")
         
-        # FFmpeg command - preserve all audio channels
+        # FFmpeg command - FAST COPY method (lossless, no re-encoding)
+        duration = clip_end - clip_start
+        
         cmd = [
             'ffmpeg',
-            '-ss', str(clip_start),  # Put -ss first (faster)
+            '-ss', str(clip_start),  # Seek before input (fast)
             '-i', video_path,
-            '-to', str(clip_end - clip_start),  # Relative duration
+            '-t', str(duration),  # Duration
             '-map', '0',  # Copy ALL streams (video + all audio channels)
-            '-c', 'copy',  # Copy everything as-is
-            '-avoid_negative_ts', 'make_zero',  # Fix video freeze/sync issues
+            '-c', 'copy',  # Copy without re-encoding (fast + lossless)
+            '-avoid_negative_ts', 'make_zero',  # Fix timestamp issues
             '-fflags', '+genpts',  # Regenerate timestamps
             '-y',  # Overwrite
             output_file
         ]
         
+        # Log encoding method (only for first clip)
+        if i == 1:
+            log_message("⚡ Video encoding: COPY mode (lossless, no re-encoding)", "success")
+        
         log_message(f"{t('log_extracting_clip', i=i, total=len(kill_segments))}: {clip_start:.1f}s - {clip_end:.1f}s", "info")
         update_progress(i, len(kill_segments), f"Clip {i}/{len(kill_segments)}")
-        result = subprocess.run(cmd, capture_output=True)
+        
+        # Extract clip
+        result = subprocess.run(cmd, capture_output=True, text=True)
         
         if result.returncode == 0:
             log_message(f"{t('log_saved')}: {os.path.basename(output_file)}", "success")
         else:
             log_message(f"{t('log_error')}: {os.path.basename(output_file)}", "error")
+            if result.stderr:
+                log_message(f"FFmpeg error: {result.stderr[:200]}", "error")
     
     log_message(f"\n{t('log_clips_saved', count=len(kill_segments))}", "success")
 
@@ -387,7 +446,7 @@ def run_with_gui(gui):
     global ROI_X_START, ROI_Y_START, ROI_X_END, ROI_Y_END
     global KILL_COLOR_LOWER, KILL_COLOR_UPPER, KILL_COLOR_LOWER2, KILL_COLOR_UPPER2
     global MIN_COLOR_PIXELS, CANNY_THRESHOLD1, CANNY_THRESHOLD2
-    global current_language, language_texts
+    global current_language, language_texts, use_gpu
     
     gui_instance = gui
     
@@ -395,6 +454,9 @@ def run_with_gui(gui):
     languages = load_languages()
     current_language = gui.config.get('LANGUAGE', 'tr')
     language_texts = languages.get(current_language, languages['tr'])
+    
+    # Check GPU availability
+    use_gpu = check_gpu_available()
     
     # Reload config (settings may have changed)
     config = load_config()

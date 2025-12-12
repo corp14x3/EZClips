@@ -1,10 +1,10 @@
 {
-    "LANGUAGE": "tr",
+    "LANGUAGE": "en",
     "THRESHOLD": 0.5,
     "FRAME_SKIP": 60,
     "BUFFER_BEFORE": 4.0,
     "BUFFER_AFTER": 4.0,
-    "MIN_KILL_GAP": 7.0,
+    "MIN_KILL_GAP": 10.0,
     "KILL_COOLDOWN": 8.0,
     "USE_EDGE_DETECTION": true,
     "USE_COLOR_FILTER": true,
@@ -38,5 +38,5 @@
     "CANNY_THRESHOLD2": 250,
     "INPUT_FOLDER": "input_videos",
     "OUTPUT_FOLDER": "kills",
-    "TEMPLATE_PATH": "./../templates/killfeed_template.jpg"
+    "TEMPLATE_PATH": "./req/templates/killfeed_template.jpg"
 }

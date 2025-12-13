@@ -42,7 +42,7 @@ def t(key, **kwargs):
 def load_config():
     """Load settings from config file"""
     try:
-        with open('./req/jsons/config.json', 'r', encoding='utf-8') as f:
+        with open(get_resource_path('req/jsons/config.json'), 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
         # Default values
@@ -79,7 +79,7 @@ config = load_config()
 INPUT_FOLDER = config['INPUT_FOLDER']
 OUTPUT_FOLDER = config['OUTPUT_FOLDER']
 TEMPLATE_PATH = config['TEMPLATE_PATH']
-PROCESSED_LOG = "./req/jsons/processed_videos.json"
+PROCESSED_LOG = get_resource_path("req/jsons/processed_videos.json")
 THRESHOLD = config['THRESHOLD']
 BUFFER_BEFORE = config['BUFFER_BEFORE']
 BUFFER_AFTER = config['BUFFER_AFTER']
@@ -100,6 +100,18 @@ KILL_COLOR_UPPER2 = np.array(config['KILL_COLOR_UPPER2'])
 MIN_COLOR_PIXELS = config['MIN_COLOR_PIXELS']
 CANNY_THRESHOLD1 = config.get('CANNY_THRESHOLD1', 150)
 CANNY_THRESHOLD2 = config.get('CANNY_THRESHOLD2', 250)
+import sys
+
+def get_resource_path(relative_path):
+    """Get the correct path for resources in both dev and bundled EXE"""
+    if getattr(sys, 'frozen', False):
+        # Running as bundled EXE
+        base_path = sys._MEIPASS
+    else:
+        # Running as script
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
+
 VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv']
 
 def log_message(message, level='info'):

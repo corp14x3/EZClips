@@ -1,3 +1,22 @@
 .vscode/extensions.json
 *.mp4
 req/jsons/processed_videos.json
+# Build outputs
+build/
+dist/
+*.spec
+__pycache__/
+*.pyc
+
+# Virtual environment
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+build.bat

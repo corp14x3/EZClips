@@ -8,6 +8,20 @@ import subprocess
 from PIL import Image, ImageTk, ImageDraw
 import cv2
 import queue
+import urllib.request
+import urllib.error
+import sys
+
+def get_resource_path(relative_path):
+    """Get the correct path for resources in both dev and bundled EXE"""
+    if getattr(sys, 'frozen', False):
+        # Running as bundled EXE
+        base_path = sys._MEIPASS
+    else:
+        # Running as script
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
+
 
 # Modern tema ayarları
 ctk.set_appearance_mode("dark")
@@ -16,10 +30,35 @@ ctk.set_default_color_theme("blue")
 # Supported video formats (sync with main.py)
 VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv']
 
+# App version
+APP_VERSION = "1.0.0"
+
+def check_for_updates():
+    """Check for updates on GitHub"""
+    try:
+        # GitHub API endpoint - replace with your repo
+        url = "https://api.github.com/repos/corp14x3/EZClips/releases/latest"
+        req = urllib.request.Request(url, headers={'User-Agent': 'EZClips'})
+        response = urllib.request.urlopen(req, timeout=5)
+        data = json.loads(response.read().decode())
+        latest_version = data.get('tag_name', '').lstrip('v')
+        
+        if latest_version and latest_version > APP_VERSION:
+            return {
+                'has_update': True,
+                'version': latest_version,
+                'url': data.get('html_url', ''),
+                'notes': data.get('body', '')
+            }
+    except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, Exception):
+        pass
+    return {'has_update': False}
+
 # Load language file
 def load_languages():
     try:
-        with open('./req/jsons/languages.json', 'r', encoding='utf-8') as f:
+        lang_path = get_resource_path('req/jsons/languages.json')
+        with open(lang_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
         return {"tr": {}, "en": {}}
@@ -30,10 +69,21 @@ class VideoProcessorGUI:
     def __init__(self, root):
         self.root = root
         self.root.geometry("1400x900")
+        # Uygulama iconu
+        try:
+            icon_path = get_resource_path('req/ico.ico')
+            if os.path.exists(icon_path):
+                # Windows .ico desteği
+                self.root.iconbitmap(default=icon_path)
+        except Exception:
+            pass
         
         # Config dosyasını yükle
-        self.config_file = "./req/jsons/config.json"
         self.load_config()
+        
+        # Version'ı config'ten al (tek kaynak - sadece config.json güncelle)
+        global APP_VERSION
+        APP_VERSION = self.config.get('APP_VERSION', '1.0.0')
         
         # Dil ayarla
         self.current_lang = self.config.get('LANGUAGE', 'tr')
@@ -53,26 +103,69 @@ class VideoProcessorGUI:
         # Ana layout
         self.create_ui()
         
+        # Check for updates on startup
+        self.check_updates_on_startup()
+        
         # Queue'ları kontrol et (her 100ms)
         self.check_queues()
         
     def load_config(self):
         """Load settings from config file"""
         try:
-            with open(self.config_file, 'r') as f:
+            # Öncelik: Kullanıcı config (AppData) varsa onu yükle, yoksa paket içi
+            user_cfg = None
+            if getattr(sys, 'frozen', False):
+                appdata = os.getenv('APPDATA') or os.path.expanduser('~')
+                user_cfg = os.path.join(appdata, 'EZClips', 'config.json')
+            if user_cfg and os.path.exists(user_cfg):
+                config_path = user_cfg
+            else:
+                config_path = get_resource_path("req/jsons/config.json")
+            with open(config_path, 'r', encoding='utf-8') as f:
                 self.config = json.load(f)
-        except:
-            messagebox.showerror("Hata", "config.json dosyası bulunamadı!")
+        except Exception as e:
+            messagebox.showerror("Hata", f"config.json dosyası bulunamadı!\n{e}")
             self.root.quit()
     
     def save_config(self):
         """Save settings to config file"""
         try:
-            with open(self.config_file, 'w') as f:
-                json.dump(self.config, f, indent=4)
+            # Yazılabilir config yolu: geliştirmede repo içi, EXE'de AppData
+            if getattr(sys, 'frozen', False):
+                appdata = os.getenv('APPDATA') or os.path.expanduser('~')
+                cfg_dir = os.path.join(appdata, 'EZClips')
+                os.makedirs(cfg_dir, exist_ok=True)
+                cfg_path = os.path.join(cfg_dir, 'config.json')
+            else:
+                cfg_path = get_resource_path('req/jsons/config.json')
+
+            with open(cfg_path, 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, indent=4, ensure_ascii=False)
             self.add_log("✓ Ayarlar kaydedildi", "success")
         except Exception as e:
             messagebox.showerror("Hata", f"Ayarlar kaydedilemedi: {e}")
+    
+    def check_updates_on_startup(self):
+        """Check for updates in background"""
+        def check():
+            try:
+                update_info = check_for_updates()
+                if update_info.get('has_update'):
+                    def show_update():
+                        response = messagebox.askyesno(
+                            "Update Available / Güncelleme Mevcut",
+                            f"New version {update_info['version']} is available!\n"
+                            f"Yeni sürüm {update_info['version']} mevcut!\n\n"
+                            f"Download: {update_info['url']}"
+                        )
+                        if response:
+                            os.startfile(update_info['url'])
+                    self.root.after(0, show_update)
+            except:
+                pass
+        
+        thread = threading.Thread(target=check, daemon=True)
+        thread.start()
     
     def t(self, key):
         """Get translation"""
@@ -406,7 +499,7 @@ class VideoProcessorGUI:
         
         try:
             # example.jpg'yi yükle
-            img_path = Path("./req/roi/example.jpg")
+            img_path = Path(get_resource_path('req/roi/example.jpg'))
             if not img_path.exists():
                 return
             

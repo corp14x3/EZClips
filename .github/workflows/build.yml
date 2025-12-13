@@ -27,8 +27,9 @@ jobs:
       run: |
         echo Including all req files and subdirectories: jsons, roi, templates, icon
         pyinstaller --onefile --windowed --noupx --icon=req/ico.ico --name=EZClips --add-data "req;req" --hidden-import=main gui.py
-        rmdir /s /q build
-        del EZClips.spec
+        Remove-Item -Path build -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path EZClips.spec -Force -ErrorAction SilentlyContinue
+      shell: pwsh
     
     - name: Create Release with EXE only
       uses: softprops/action-gh-release@v1

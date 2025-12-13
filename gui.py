@@ -13,6 +13,9 @@ import queue
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
+# Supported video formats (sync with main.py)
+VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv']
+
 # Load language file
 def load_languages():
     try:
@@ -566,7 +569,10 @@ class VideoProcessorGUI:
             except:
                 pass
         
-        videos = list(input_folder.glob('*.mp4'))
+        videos = []
+        for ext in VIDEO_EXTENSIONS:
+            videos.extend(input_folder.glob(f'*{ext}'))
+        videos = sorted(videos)
         if not videos:
             ctk.CTkLabel(self.videos_scroll,
                         text=self.t('no_videos'),
@@ -640,7 +646,10 @@ class VideoProcessorGUI:
                         font=ctk.CTkFont(size=14)).pack(pady=50)
             return
         
-        clips = sorted(output_folder.glob('*.mp4'), key=lambda x: x.stat().st_mtime, reverse=True)
+        clips = []
+        for ext in VIDEO_EXTENSIONS:
+            clips.extend(output_folder.glob(f'*{ext}'))
+        clips = sorted(clips, key=lambda x: x.stat().st_mtime, reverse=True)
         if not clips:
             ctk.CTkLabel(self.clips_scroll,
                         text=self.t('no_clips'),
@@ -706,7 +715,9 @@ class VideoProcessorGUI:
             try:
                 filepath.unlink()
                 messagebox.showinfo("Success / Başarılı", "Clip deleted successfully!\nKlip başarıyla silindi!")
-                self.refresh_clips()
+                # Run refresh in background thread to avoid UI freeze
+                refresh_thread = threading.Thread(target=self.refresh_clips, daemon=True)
+                refresh_thread.start()
             except Exception as e:
                 messagebox.showerror("Error / Hata", f"Could not delete clip / Klip silinemedi: {e}")
     

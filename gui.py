@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import messagebox, Canvas, PhotoImage, Menu
+from tkinter import messagebox, Canvas, PhotoImage, Menu, filedialog
 import json
 import threading
 import os
@@ -11,15 +11,15 @@ import queue
 import urllib.request
 import urllib.error
 import sys
+import shutil
 
 def get_resource_path(relative_path):
-    """Get the correct path for resources in both dev and bundled EXE"""
-    if getattr(sys, 'frozen', False):
-        # Running as bundled EXE
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
-    else:
-        # Running as script
-        base_path = os.path.dirname(os.path.abspath(__file__))
+    except Exception:
+        base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
 
@@ -271,6 +271,9 @@ class VideoProcessorGUI:
         button_frame = ctk.CTkFrame(top_frame, fg_color="transparent")
         button_frame.pack(side="right")
         
+        ctk.CTkButton(button_frame, text="➕ " + self.t('add_videos'), command=self.add_videos_dialog,
+                     width=140, height=35, corner_radius=10).pack(side="left", padx=5)
+        
         ctk.CTkButton(button_frame, text=self.t('refresh'), command=self.refresh_videos,
                      width=120, height=35, corner_radius=10).pack(side="left", padx=5)
         
@@ -312,6 +315,20 @@ class VideoProcessorGUI:
     def create_settings_tab(self):
         """Settings tab"""
         tab = self.tabview.tab(self.t('tab_settings'))
+        
+        # Üst panel - Save butonu
+        top_frame = ctk.CTkFrame(tab, fg_color="transparent", height=60)
+        top_frame.pack(fill="x", pady=(0, 10))
+        top_frame.pack_propagate(False)
+        
+        ctk.CTkLabel(top_frame, text=self.t('tab_settings'),
+                    font=ctk.CTkFont(size=20, weight="bold")).pack(side="left", padx=20)
+        
+        ctk.CTkButton(top_frame, text=self.t('save_settings'),
+                     command=self.save_settings,
+                     font=ctk.CTkFont(size=14, weight="bold"),
+                     width=180, height=40, corner_radius=10,
+                     fg_color="#4CAF50", hover_color="#45a049").pack(side="right", padx=20)
         
         # Scrollable frame
         scroll = ctk.CTkScrollableFrame(tab, corner_radius=10)
@@ -481,16 +498,6 @@ class VideoProcessorGUI:
                     entry.pack(side="left")
                 
                 self.setting_vars[key] = (var, type_)
-        
-        # Kaydet butonu
-        save_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        save_frame.pack(pady=30)
-        
-        ctk.CTkButton(save_frame, text=self.t('save_settings'),
-                     command=self.save_settings,
-                     font=ctk.CTkFont(size=16, weight="bold"),
-                     width=250, height=50, corner_radius=15,
-                     fg_color="#4CAF50", hover_color="#45a049").pack()
     
     def update_roi_preview(self):
         """Show ROI preview on example.jpg"""
@@ -654,7 +661,7 @@ class VideoProcessorGUI:
         
         # İşlenmiş videoları oku
         processed = set()
-        processed_log_path = './req/jsons/processed_videos.json'
+        processed_log_path = get_resource_path('req/jsons/processed_videos.json')
         if os.path.exists(processed_log_path):
             try:
                 with open(processed_log_path, 'r', encoding='utf-8') as f:
@@ -816,7 +823,7 @@ class VideoProcessorGUI:
     
     def toggle_video_processed(self, video_name, mark_as_processed):
         """Toggle video processed status"""
-        processed_log_path = './req/jsons/processed_videos.json'
+        processed_log_path = get_resource_path('req/jsons/processed_videos.json')
         
         # Load current processed videos
         processed = {}
@@ -874,6 +881,48 @@ class VideoProcessorGUI:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
             menu.grab_release()
+    
+    def add_videos_dialog(self):
+        """Open file dialog to add videos"""
+        filetypes = [("Video files", " ".join(f"*{ext}" for ext in VIDEO_EXTENSIONS)), ("All files", "*.*")]
+        files = filedialog.askopenfilenames(title="Select videos to add / Eklenecek videoları seçin", 
+                                           filetypes=filetypes)
+        
+        if not files:
+            return
+        
+        input_folder = Path(self.config['INPUT_FOLDER'])
+        input_folder.mkdir(exist_ok=True)
+        
+        moved_count = 0
+        skipped_count = 0
+        
+        for file_path in files:
+            file_path = Path(file_path)
+            dest = input_folder / file_path.name
+            
+            # Check if already exists
+            if dest.exists():
+                skipped_count += 1
+                continue
+            
+            try:
+                # Move file to input folder
+                shutil.move(str(file_path), str(dest))
+                moved_count += 1
+            except Exception as e:
+                print(f"Error moving {file_path}: {e}")
+        
+        if moved_count > 0:
+            msg = f"✓ {moved_count} video(s) moved to input folder!\n✓ {moved_count} video taşındı!"
+            if skipped_count > 0:
+                msg += f"\n\n⏭ {skipped_count} already existed (skipped)\n⏭ {skipped_count} zaten vardı (atlandı)"
+            messagebox.showinfo("Success / Başarılı", msg)
+            self.refresh_videos()
+        elif skipped_count > 0:
+            messagebox.showinfo("Info / Bilgi",
+                              f"All {skipped_count} videos already exist!\n"
+                              f"Tüm {skipped_count} video zaten mevcut!")
     
     def open_input_folder(self):
         """Open input folder"""

@@ -4,6 +4,16 @@ import subprocess
 import os
 import json
 from pathlib import Path
+import sys
+
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 # Global GUI reference
 gui_instance = None
@@ -27,7 +37,8 @@ def check_gpu_available():
 def load_languages():
     """Load language file"""
     try:
-        with open('./req/jsons/languages.json', 'r', encoding='utf-8') as f:
+        lang_path = get_resource_path('req/jsons/languages.json')
+        with open(lang_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
         return {"tr": {}, "en": {}}
@@ -42,7 +53,8 @@ def t(key, **kwargs):
 def load_config():
     """Load settings from config file"""
     try:
-        with open('./req/jsons/config.json', 'r', encoding='utf-8') as f:
+        config_path = get_resource_path('req/jsons/config.json')
+        with open(config_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
         # Default values
@@ -78,8 +90,8 @@ config = load_config()
 # Get settings from config
 INPUT_FOLDER = config['INPUT_FOLDER']
 OUTPUT_FOLDER = config['OUTPUT_FOLDER']
-TEMPLATE_PATH = config['TEMPLATE_PATH']
-PROCESSED_LOG = "./req/jsons/processed_videos.json"
+TEMPLATE_PATH = get_resource_path(config['TEMPLATE_PATH'].lstrip('./'))
+PROCESSED_LOG = get_resource_path("req/jsons/processed_videos.json")
 THRESHOLD = config['THRESHOLD']
 BUFFER_BEFORE = config['BUFFER_BEFORE']
 BUFFER_AFTER = config['BUFFER_AFTER']
@@ -464,7 +476,7 @@ def run_with_gui(gui):
     # Update global variables
     INPUT_FOLDER = config['INPUT_FOLDER']
     OUTPUT_FOLDER = config['OUTPUT_FOLDER']
-    TEMPLATE_PATH = config['TEMPLATE_PATH']
+    TEMPLATE_PATH = get_resource_path(config['TEMPLATE_PATH'].lstrip('./'))
     THRESHOLD = config['THRESHOLD']
     BUFFER_BEFORE = config['BUFFER_BEFORE']
     BUFFER_AFTER = config['BUFFER_AFTER']

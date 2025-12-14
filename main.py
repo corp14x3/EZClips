@@ -4,23 +4,12 @@ import subprocess
 import os
 import json
 from pathlib import Path
-import sys
 
 # Global GUI reference
 gui_instance = None
 current_language = 'tr'
 language_texts = {}
 use_gpu = False  # Will be set after checking GPU availability
-
-def get_resource_path(relative_path):
-    """Get the correct path for resources in both dev and bundled EXE"""
-    if getattr(sys, 'frozen', False):
-        # Running as bundled EXE
-        base_path = sys._MEIPASS
-    else:
-        # Running as script
-        base_path = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base_path, relative_path)
 
 # Check if GPU is available for OpenCV
 def check_gpu_available():
@@ -38,8 +27,7 @@ def check_gpu_available():
 def load_languages():
     """Load language file"""
     try:
-        lang_path = get_resource_path('req/jsons/languages.json')
-        with open(lang_path, 'r', encoding='utf-8') as f:
+        with open('./req/jsons/languages.json', 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
         return {"tr": {}, "en": {}}
@@ -54,7 +42,7 @@ def t(key, **kwargs):
 def load_config():
     """Load settings from config file"""
     try:
-        with open(get_resource_path('req/jsons/config.json'), 'r', encoding='utf-8') as f:
+        with open('./req/jsons/config.json', 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
         # Default values
@@ -91,7 +79,7 @@ config = load_config()
 INPUT_FOLDER = config['INPUT_FOLDER']
 OUTPUT_FOLDER = config['OUTPUT_FOLDER']
 TEMPLATE_PATH = config['TEMPLATE_PATH']
-PROCESSED_LOG = get_resource_path("req/jsons/processed_videos.json")
+PROCESSED_LOG = "./req/jsons/processed_videos.json"
 THRESHOLD = config['THRESHOLD']
 BUFFER_BEFORE = config['BUFFER_BEFORE']
 BUFFER_AFTER = config['BUFFER_AFTER']
@@ -112,18 +100,6 @@ KILL_COLOR_UPPER2 = np.array(config['KILL_COLOR_UPPER2'])
 MIN_COLOR_PIXELS = config['MIN_COLOR_PIXELS']
 CANNY_THRESHOLD1 = config.get('CANNY_THRESHOLD1', 150)
 CANNY_THRESHOLD2 = config.get('CANNY_THRESHOLD2', 250)
-import sys
-
-def get_resource_path(relative_path):
-    """Get the correct path for resources in both dev and bundled EXE"""
-    if getattr(sys, 'frozen', False):
-        # Running as bundled EXE
-        base_path = sys._MEIPASS
-    else:
-        # Running as script
-        base_path = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base_path, relative_path)
-
 VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv']
 
 def log_message(message, level='info'):
@@ -554,9 +530,3 @@ def run_with_gui(gui):
     # Refresh GUI
     gui_instance.root.after(0, gui_instance.refresh_videos)
     gui_instance.root.after(0, gui_instance.refresh_clips)
-
-
-if __name__ == "__main__":
-    print("Error: main.py should not be run directly!")
-    print("Please run: python gui.py")
-    sys.exit(1)

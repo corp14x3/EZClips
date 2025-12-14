@@ -42,7 +42,25 @@ def get_data_path(relative_path):
             data_dir = os.path.abspath(".")
     except Exception:
         data_dir = os.path.abspath(".")
-    return os.path.join(data_dir, relative_path)
+    
+    data_path = os.path.join(data_dir, relative_path)
+    
+    # For processed_videos.json: if it doesn't exist in data_dir, try to copy from resource
+    if 'processed_videos.json' in relative_path:
+        if not os.path.exists(data_path):
+            # Try to get from bundled resources
+            try:
+                resource_path = get_resource_path(relative_path)
+                if os.path.exists(resource_path):
+                    # Ensure directory exists
+                    os.makedirs(os.path.dirname(data_path), exist_ok=True)
+                    # Copy bundled file to writable location
+                    import shutil
+                    shutil.copy2(resource_path, data_path)
+            except Exception as e:
+                print(f"Could not copy processed_videos.json from resources: {e}")
+    
+    return data_path
 
 # Global GUI reference
 gui_instance = None

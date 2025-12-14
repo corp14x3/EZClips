@@ -24,17 +24,35 @@ def get_resource_path(relative_path):
 
 def get_data_path(relative_path):
     """Get path for data files that need to be writable (processed_videos.json, etc)"""
-    # If running as EXE, save to exe directory instead of temp folder
+    # If running as EXE, save to AppData instead of exe directory
     try:
         if getattr(sys, 'frozen', False):
-            # Running as bundled EXE - use exe directory
-            exe_dir = os.path.dirname(sys.executable)
+            # Running as bundled EXE - use AppData
+            appdata = os.getenv('APPDATA') or os.path.expanduser('~')
+            data_dir = os.path.join(appdata, 'EZClips')
         else:
-            # Running as script
-            exe_dir = os.path.abspath(".")
+            # Running as script - use current directory
+            data_dir = os.path.abspath(".")
     except Exception:
-        exe_dir = os.path.abspath(".")
-    return os.path.join(exe_dir, relative_path)
+        data_dir = os.path.abspath(".")
+    
+    data_path = os.path.join(data_dir, relative_path)
+    
+    # For processed_videos.json: if it doesn't exist in data_dir, try to copy from resource
+    if 'processed_videos.json' in relative_path:
+        if not os.path.exists(data_path):
+            # Try to get from bundled resources
+            try:
+                resource_path = get_resource_path(relative_path)
+                if os.path.exists(resource_path):
+                    # Ensure directory exists
+                    os.makedirs(os.path.dirname(data_path), exist_ok=True)
+                    # Copy bundled file to writable location
+                    shutil.copy2(resource_path, data_path)
+            except Exception as e:
+                print(f"Could not copy processed_videos.json from resources: {e}")
+    
+    return data_path
 
 # Modern tema ayarları
 ctk.set_appearance_mode("dark")

@@ -15,6 +15,35 @@ def get_resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+def get_data_path(relative_path):
+    """Get path for data files that need to be writable (processed_videos.json, etc)"""
+    # If running as EXE, save to exe directory instead of temp folder
+    try:
+        if getattr(sys, 'frozen', False):
+            # Running as bundled EXE - use exe directory
+            exe_dir = os.path.dirname(sys.executable)
+        else:
+            # Running as script
+            exe_dir = os.path.abspath(".")
+    except Exception:
+        exe_dir = os.path.abspath(".")
+    return os.path.join(exe_dir, relative_path)
+
+def get_data_path(relative_path):
+    """Get path for data files that need to be writable (processed_videos.json, etc)"""
+    # If running as EXE, save to AppData instead of exe directory
+    try:
+        if getattr(sys, 'frozen', False):
+            # Running as bundled EXE - use AppData
+            appdata = os.getenv('APPDATA') or os.path.expanduser('~')
+            data_dir = os.path.join(appdata, 'EZClips')
+        else:
+            # Running as script - use current directory
+            data_dir = os.path.abspath(".")
+    except Exception:
+        data_dir = os.path.abspath(".")
+    return os.path.join(data_dir, relative_path)
+
 # Global GUI reference
 gui_instance = None
 current_language = 'tr'
@@ -53,12 +82,25 @@ def t(key, **kwargs):
 def load_config():
     """Load settings from config file"""
     try:
-        config_path = get_resource_path('req/jsons/config.json')
-        with open(config_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        # Yazılabilir config yolu: geliştirmede repo içi, EXE'de AppData
+        if getattr(sys, 'frozen', False):
+            appdata = os.getenv('APPDATA') or os.path.expanduser('~')
+            config_path = os.path.join(appdata, 'EZClips', 'config.json')
+        else:
+            config_path = get_resource_path('req/jsons/config.json')
+        
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        else:
+            # Fallback to resource path if AppData doesn't exist
+            config_path = get_resource_path('req/jsons/config.json')
+            with open(config_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
     except:
         # Default values
         return {
+            'APP_VERSION': '1.0.3',
             'INPUT_FOLDER': 'input_videos',
             'OUTPUT_FOLDER': 'kills',
             'TEMPLATE_PATH': './req/templates/killfeed_template.jpg',
@@ -91,7 +133,7 @@ config = load_config()
 INPUT_FOLDER = config['INPUT_FOLDER']
 OUTPUT_FOLDER = config['OUTPUT_FOLDER']
 TEMPLATE_PATH = get_resource_path(config['TEMPLATE_PATH'].lstrip('./'))
-PROCESSED_LOG = get_resource_path("req/jsons/processed_videos.json")
+PROCESSED_LOG = get_data_path("req/jsons/processed_videos.json")
 THRESHOLD = config['THRESHOLD']
 BUFFER_BEFORE = config['BUFFER_BEFORE']
 BUFFER_AFTER = config['BUFFER_AFTER']
@@ -500,7 +542,7 @@ def run_with_gui(gui):
     
     # Start processing
     log_message("\n" + "="*60, "info")
-    log_message(t('log_app_title'), "info")
+    log_message(f"{t('log_app_title')} v{config.get('APP_VERSION', '1.0.0')}", "info")
     log_message("="*60, "info")
     
     create_output_folder()

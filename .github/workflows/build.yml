@@ -21,12 +21,12 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pyinstaller
+        pip install pyinstaller --upgrade
     
     - name: Build EXE
       run: |
         echo Including all req files and subdirectories: jsons, roi, templates, icon
-        pyinstaller --onefile --windowed --noupx --icon=req/ico.ico --name=EZClips --add-data "req;req" --hidden-import=main gui.py
+        pyinstaller --onefile --windowed --noupx --add-binary "req/ico.ico;." --icon=req/ico.ico --name=EZClips --add-data "req;req" --hidden-import=main --collect-all customtkinter gui.py
         Remove-Item -Path build -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -Path EZClips.spec -Force -ErrorAction SilentlyContinue
       shell: pwsh

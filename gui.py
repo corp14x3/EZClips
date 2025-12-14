@@ -22,6 +22,19 @@ def get_resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+def get_data_path(relative_path):
+    """Get path for data files that need to be writable (processed_videos.json, etc)"""
+    # If running as EXE, save to exe directory instead of temp folder
+    try:
+        if getattr(sys, 'frozen', False):
+            # Running as bundled EXE - use exe directory
+            exe_dir = os.path.dirname(sys.executable)
+        else:
+            # Running as script
+            exe_dir = os.path.abspath(".")
+    except Exception:
+        exe_dir = os.path.abspath(".")
+    return os.path.join(exe_dir, relative_path)
 
 # Modern tema ayarları
 ctk.set_appearance_mode("dark")
@@ -316,13 +329,28 @@ class VideoProcessorGUI:
         """Settings tab"""
         tab = self.tabview.tab(self.t('tab_settings'))
         
-        # Üst panel - Save butonu
+        # Üst panel - Save butonu ve Version
         top_frame = ctk.CTkFrame(tab, fg_color="transparent", height=60)
         top_frame.pack(fill="x", pady=(0, 10))
         top_frame.pack_propagate(False)
         
         ctk.CTkLabel(top_frame, text=self.t('tab_settings'),
                     font=ctk.CTkFont(size=20, weight="bold")).pack(side="left", padx=20)
+        
+        # Version bilgisi
+        version_info = f"v{self.config.get('APP_VERSION', '1.0.0')}"
+        update_check = check_for_updates()
+        if update_check.get('has_update'):
+            version_label = ctk.CTkLabel(top_frame, 
+                                        text=f"🔄 New update available: v{update_check['version']}",
+                                        font=ctk.CTkFont(size=12, weight="bold"),
+                                        text_color="#FFA726")
+        else:
+            version_label = ctk.CTkLabel(top_frame,
+                                        text=f"✓ {version_info}",
+                                        font=ctk.CTkFont(size=12),
+                                        text_color="gray60")
+        version_label.pack(side="right", padx=20)
         
         ctk.CTkButton(top_frame, text=self.t('save_settings'),
                      command=self.save_settings,
@@ -661,7 +689,7 @@ class VideoProcessorGUI:
         
         # İşlenmiş videoları oku
         processed = set()
-        processed_log_path = get_resource_path('req/jsons/processed_videos.json')
+        processed_log_path = get_data_path('req/jsons/processed_videos.json')
         if os.path.exists(processed_log_path):
             try:
                 with open(processed_log_path, 'r', encoding='utf-8') as f:
@@ -823,7 +851,7 @@ class VideoProcessorGUI:
     
     def toggle_video_processed(self, video_name, mark_as_processed):
         """Toggle video processed status"""
-        processed_log_path = get_resource_path('req/jsons/processed_videos.json')
+        processed_log_path = get_data_path('req/jsons/processed_videos.json')
         
         # Load current processed videos
         processed = {}
